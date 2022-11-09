@@ -1,0 +1,1 @@
+IdEmotion[] list_id_emotion
