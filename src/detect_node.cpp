@@ -57,8 +57,8 @@ class DetectFaces : public rclcpp::Node
     }
 
     private:
-        Timer m_timer;        // Timer used to measure the time required for one iteration
-	      double m_elapsedTime; // Sum of the elapsed time, used to check if one second has passed
+        Timer m_timer;          // Timer used to measure the time required for one iteration
+	    double m_elapsedTime;   // Sum of the elapsed time, used to check if one second has passed
         float m_maxFPS = 30.0;
         uint64_t m_frameCnt = 0;
         std::string  m_last_json_msg = "";
@@ -77,8 +77,6 @@ class DetectFaces : public rclcpp::Node
             this->declare_parameter("detection_topic", "detections");
             this->declare_parameter("face_pub_size", 224);
             this->declare_parameter("fp_duration", 500);
-            this->declare_parameter("eng_rebuild", false);
-            this->declare_parameter("eng_load",true);
             this->declare_parameter("eng_weights_path","");
             this->declare_parameter("eng_save_path", "./retina_detection.rt");
             this->declare_parameter("eng_use_dla", -1);
@@ -94,8 +92,6 @@ class DetectFaces : public rclcpp::Node
             faceId_topic_name_ = this->get_parameter("faceId_topic_name").as_string();
             face_publish_size_ = this->get_parameter("face_pub_size").as_int();
             fp_timer_duration_ = chrono::milliseconds(this->get_parameter("fp_duration").as_int());
-            eng_rebuild_ = this->get_parameter("eng_rebuild").as_bool();
-            eng_load_ = this->get_parameter("eng_load").as_bool();
             eng_weights_path_ = this->get_parameter("eng_weights_path").as_string();
             eng_save_path_ = this->get_parameter("eng_save_path").as_string();
             eng_use_dla_ = this->get_parameter("eng_use_dla").as_int();
@@ -109,7 +105,7 @@ class DetectFaces : public rclcpp::Node
             m_elapsedTime = 0;
             m_timer.Start();
 
-            fd_ = std::make_shared<face_RT::RetinaFaceDetector>(eng_rebuild_, eng_load_, eng_weights_path_, eng_save_path_, eng_use_dla_, eng_fp_16_);
+            fd_ = std::make_shared<face_RT::RetinaFaceDetector>(eng_weights_path_, eng_save_path_, eng_use_dla_, eng_fp_16_);
 
             RCLCPP_INFO(this->get_logger(), "Subscribing to topic '%s'", cam_topic_.c_str());
             // sub_ = create_subscription<sensor_msgs::msg::Image>(cam_topic_, qos, callback);
@@ -392,7 +388,6 @@ class DetectFaces : public rclcpp::Node
         std::string emotion_topic_;
 
         /* For the node's engine */
-        bool eng_rebuild_;
         bool eng_load_;
         std::string eng_weights_path_;
         std::string eng_save_path_;

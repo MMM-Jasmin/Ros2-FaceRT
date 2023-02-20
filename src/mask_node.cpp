@@ -34,7 +34,6 @@ public:
     this->declare_parameter("topic_sub", "face_id");
     this->declare_parameter("topic_pub", "mask_eval");
 
-    this->declare_parameter("eng_rebuild", false);
     this->declare_parameter("eng_save",true);
     this->declare_parameter("eng_onnx_path", "");
     this->declare_parameter("eng_save_path", "./mask_precdict.rt");
@@ -44,7 +43,6 @@ public:
     topic_sub = this->get_parameter("topic_sub").as_string();
     topic_pub = this->get_parameter("topic_pub").as_string();
 
-    eng_rebuild = this->get_parameter("eng_rebuild").as_bool();
     eng_save = this->get_parameter("eng_save").as_bool();
     eng_onnx_path = this->get_parameter("eng_onnx_path").as_string();
     eng_save_path = this->get_parameter("eng_save_path").as_string();
@@ -53,8 +51,7 @@ public:
 
     IdMask_publisher_ = this->create_publisher<rtface_pkg::msg::ListIdMask>(
         topic_pub, 10);
-    mp_ = std::make_shared<face_RT::MaskPredictionRT>(eng_rebuild,
-                                                      eng_save,
+    mp_ = std::make_shared<face_RT::MaskPredictionRT>(eng_save,
                                                       eng_onnx_path,
                                                       eng_save_path,
                                                       eng_use_dla_,
@@ -103,7 +100,6 @@ private:
   std::string topic_pub;
 
   /* For the node's engine */
-  bool eng_rebuild;
   bool eng_save;
   std::string eng_onnx_path;
   std::string eng_save_path;

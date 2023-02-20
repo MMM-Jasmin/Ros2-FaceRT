@@ -38,9 +38,7 @@ public:
     this->declare_parameter("similarity_th", .3);
 
     this->declare_parameter("eng_embeddings_path","");
-    this->declare_parameter("eng_rebuild", false);
     this->declare_parameter("eng_save", true);
-
     this->declare_parameter("eng_feature_onnx_path","");
     this->declare_parameter("eng_feature_save_path", "./ffeature.rt");
     this->declare_parameter("eng_use_dla", -1);
@@ -53,7 +51,6 @@ public:
     similarity_th_ = this->get_parameter("similarity_th").as_double();
 
     embeddings_path = this->get_parameter("eng_embeddings_path").as_string();
-    eng_rebuild = this->get_parameter("eng_rebuild").as_bool();
     eng_save = this->get_parameter("eng_save").as_bool();
 
     eng_feature_onnx_path = this->get_parameter("eng_feature_onnx_path").as_string();
@@ -77,7 +74,7 @@ public:
 
 
     IdName_publisher_ = this->create_publisher<rtface_pkg::msg::ListIdName>(topic_pub, m_qos_profile);
-    fr_ = std::make_shared<face_RT::FaceRecognizer>(embeddings_path, eng_rebuild, eng_save, eng_feature_onnx_path, eng_feature_save_path, eng_use_dla_, eng_fp_16_, eng_attention_);
+    fr_ = std::make_shared<face_RT::FaceRecognizer>(embeddings_path, eng_save, eng_feature_onnx_path, eng_feature_save_path, eng_use_dla_, eng_fp_16_, eng_attention_);
     DEBUG_MSG("Rec init success!");
 
     // - - - Callback for identification - - -
@@ -148,7 +145,7 @@ private:
 
   /* For the node's engine */
   std::string embeddings_path;
-  bool eng_rebuild;
+
   bool eng_save;
 
   std::string eng_feature_onnx_path;

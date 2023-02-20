@@ -31,10 +31,6 @@ def generate_launch_description():
         "rotate_image", default_value=TextSubstitution(text="False"))
     use_frameset_launch_arg = DeclareLaunchArgument(
         "use_frameset", default_value=TextSubstitution(text="False"))
-    eng_rebuild_launch_arg = DeclareLaunchArgument(
-        "eng_rebuild", default_value=TextSubstitution(text="False"))
-    eng_load_launch_arg = DeclareLaunchArgument(
-        "eng_load", default_value=TextSubstitution(text="True"))
     eng_weights_path_launch_arg = DeclareLaunchArgument(
         "eng_weights_path", default_value=TextSubstitution(text="/opt/dev/DL_Models/face_rec/model_retina/retinaface.wts"))
     eng_save_path_launch_arg = DeclareLaunchArgument(
@@ -58,8 +54,6 @@ def generate_launch_description():
         fp_duration_launch_arg,
         rotate_image_launch_arg,
         use_frameset_launch_arg,
-        eng_rebuild_launch_arg,
-        eng_load_launch_arg,
         eng_weights_path_launch_arg,
         eng_save_path_launch_arg,
         eng_use_dla_launch_arg,
@@ -85,8 +79,6 @@ def generate_launch_description():
                  "fp_duration": LaunchConfiguration('fp_duration'),
                  "rotate_image": LaunchConfiguration('rotate_image'),
                  "use_frameset": LaunchConfiguration('use_frameset'),
-                 "eng_rebuild": LaunchConfiguration('eng_rebuild'),
-                 "eng_load": LaunchConfiguration('eng_load'),
                  "eng_weights_path": LaunchConfiguration('eng_weights_path'),
                  "eng_save_path": LaunchConfiguration('eng_save_path'),
                  "eng_use_dla": LaunchConfiguration('eng_use_dla'),

@@ -15,8 +15,6 @@ def generate_launch_description():
         "similarity_th", default_value=TextSubstitution(text="0.3"))
     eng_embeddings_path_launch_arg = DeclareLaunchArgument(
         "eng_embeddings_path", default_value=TextSubstitution(text="/opt/dev/embeddings1"))
-    eng_rebuild_launch_arg = DeclareLaunchArgument(
-        "eng_rebuild", default_value=TextSubstitution(text="False"))
     eng_save_launch_arg = DeclareLaunchArgument(
         "eng_save", default_value=TextSubstitution(text="True"))
     eng_feature_onnx_path_launch_arg = DeclareLaunchArgument(
@@ -34,7 +32,6 @@ def generate_launch_description():
         topic_pub_launch_arg,
         topic_newPerson_sub_launch_arg,
         eng_embeddings_path_launch_arg,
-        eng_rebuild_launch_arg,
         eng_save_launch_arg,
         eng_feature_onnx_path_launch_arg,
         eng_feature_save_path_launch_arg,
@@ -55,7 +52,6 @@ def generate_launch_description():
                  "topic_newPerson_sub": LaunchConfiguration('topic_newPerson_sub'),
                  "similarity_th": LaunchConfiguration('similarity_th'),
                  "eng_embeddings_path": LaunchConfiguration('eng_embeddings_path'),
-                 "eng_rebuild": LaunchConfiguration('eng_rebuild'),
                  "eng_save": LaunchConfiguration('eng_save'),
                  "eng_feature_onnx_path": LaunchConfiguration('eng_feature_onnx_path'),
                  "eng_feature_save_path": LaunchConfiguration('eng_feature_save_path'),
