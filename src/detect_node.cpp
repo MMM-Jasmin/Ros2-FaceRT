@@ -228,7 +228,7 @@ class DetectFaces : public rclcpp::Node
                 RCLCPP_INFO(this->get_logger(), "m_fps_publisher: hmm publishing dets has failed!! ");
             }
 		
-		        RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+		        RCLCPP_INFO(this->get_logger(), message.data.c_str());
         }
 
 
