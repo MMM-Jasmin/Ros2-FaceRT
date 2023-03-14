@@ -6,7 +6,7 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     cam_topic_launch_arg = DeclareLaunchArgument(
-        "cam_topic", default_value=TextSubstitution(text="/background/color"))
+        "cam_topic", default_value=TextSubstitution(text="/background/color_limited"))
     mask_topic_launch_arg = DeclareLaunchArgument(
         "mask_topic", default_value=TextSubstitution(text="/mask_eval"))
     rec_topic_launch_arg = DeclareLaunchArgument(
