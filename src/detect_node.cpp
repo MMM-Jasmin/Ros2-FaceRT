@@ -113,12 +113,12 @@ class DetectFaces : public rclcpp::Node
             rclcpp::QoS m_qos_profile = rclcpp::SensorDataQoS();
             m_qos_profile = m_qos_profile.keep_last(5);
             m_qos_profile = m_qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-            m_qos_profile = m_qos_profile.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
+            //m_qos_profile = m_qos_profile.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 	
             rclcpp::QoS m_qos_profile_sysdef = rclcpp::SystemDefaultsQoS();
             m_qos_profile_sysdef = m_qos_profile_sysdef.keep_last(5);
             m_qos_profile_sysdef = m_qos_profile_sysdef.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-            m_qos_profile_sysdef = m_qos_profile_sysdef.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
+            //m_qos_profile_sysdef = m_qos_profile_sysdef.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
             rclcpp::CallbackGroup::SharedPtr my_callback_cam_group = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
             rclcpp::CallbackGroup::SharedPtr my_callback_group = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -401,13 +401,14 @@ int main(int argc, char **argv) {
     (void) argv;
     rclcpp::init(argc, argv);
 
-    rclcpp::executors::MultiThreadedExecutor multi_executor(rclcpp::ExecutorOptions(), 2, false);
+    //rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 2, false);
+    rclcpp::executors::SingleThreadedExecutor executor;
     rclcpp::NodeOptions options;
 
     auto node1 = make_shared<DetectFaces>(options);
-    multi_executor.add_node(node1);
+    executor.add_node(node1);
 
-    multi_executor.spin();
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }
