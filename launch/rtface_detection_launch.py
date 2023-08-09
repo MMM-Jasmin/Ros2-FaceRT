@@ -7,6 +7,12 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
     cam_topic_launch_arg = DeclareLaunchArgument(
         "cam_topic", default_value=TextSubstitution(text="/background/color_limited"))
+    extFacedet_topic_launch_arg = DeclareLaunchArgument(
+        "extFacedet_topic", default_value=TextSubstitution(text="/gesture_det/gesturesStamped"))
+    extFacedet_name_launch_arg = DeclareLaunchArgument(
+        "extFacedet_ArrayName", default_value=TextSubstitution(text="DETECTED_GESTURES"))
+    extFacedet_name_launch_arg = DeclareLaunchArgument(
+        "extFacedet_name", default_value=TextSubstitution(text="face"))
     mask_topic_launch_arg = DeclareLaunchArgument(
         "mask_topic", default_value=TextSubstitution(text="/mask_eval"))
     rec_topic_launch_arg = DeclareLaunchArgument(
@@ -42,6 +48,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         cam_topic_launch_arg,
+        extFacedet_topic_launch_arg,
+        extFacedet_name_launch_arg,
         mask_topic_launch_arg,
         rec_topic_launch_arg,
         emotion_topic_launch_arg,
@@ -67,6 +75,8 @@ def generate_launch_description():
             emulate_tty=True,
             parameters=[
                 {"cam_topic": LaunchConfiguration('cam_topic'),
+                 "extFacedet_topic": LaunchConfiguration('extFacedet_topic'),
+                 "extFacedet_name": LaunchConfiguration('extFacedet_name'),
                  "mask_topic": LaunchConfiguration('mask_topic'),
                  "rec_topic":LaunchConfiguration('rec_topic'),
                  "emotion_topic":LaunchConfiguration('emotion_topic'),

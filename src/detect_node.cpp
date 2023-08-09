@@ -9,6 +9,7 @@
 // native ros interfaces and libs
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "sm_interfaces/msg/string_stamped.hpp"
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
@@ -16,6 +17,8 @@
 #include "rtface_pkg/msg/list_id_image.hpp"
 // opencv and bridge
 #include "cv_bridge/cv_bridge.h"
+
+#include <nlohmann/json.hpp>
 
 #include "rtface_pkg/msg/list_id_name.hpp"
 #include "rtface_pkg/msg/list_id_mask.hpp"
@@ -25,7 +28,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <utility>
 
-
+#include "message_filters/subscriber.h"
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include "RetinaFaceDetector.h"
 #include "Utils.h"
@@ -43,25 +47,32 @@ const double ONE_SECOND            = 1000.0; // One second in milliseconds
 namespace bpo = boost::program_options;
 using namespace std::chrono_literals;
 
-class DetectFaces : public rclcpp::Node
-{
+class DetectFaces : public rclcpp::Node{
     public:
-    explicit DetectFaces(const rclcpp::NodeOptions &options) : Node("Detect_node", options){
-        setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-        // Do not execute if a --help option was provided
-        //    if (help(options.arguments())) {
-        //      exit(0);
-        //    }
-        parse_parameters();
-        initialize();
-    }
+        explicit DetectFaces(const rclcpp::NodeOptions &options) : Node("Detect_node", options){
+            setvbuf(stdout, NULL, _IONBF, BUFSIZ);
+            // Do not execute if a --help option was provided
+            //if (help(options.arguments())) {
+            //  exit(0);
+            //}
+            parse_parameters();
+            initialize();
+        }
 
     private:
         Timer m_timer;          // Timer used to measure the time required for one iteration
-	    double m_elapsedTime;   // Sum of the elapsed time, used to check if one second has passed
+        double m_elapsedTime;   // Sum of the elapsed time, used to check if one second has passed
         float m_maxFPS = 30.0;
         uint64_t m_frameCnt = 0;
         std::string  m_last_json_msg = "";
+
+        typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sm_interfaces::msg::StringStamped> FrameDetSyncPolicy;
+        typedef message_filters::Synchronizer<FrameDetSyncPolicy> FrameDetSync;
+
+        FrameDetSync* frameDet_sync;
+
+        message_filters::Subscriber<sensor_msgs::msg::Image> subscriber_image;
+        message_filters::Subscriber<sm_interfaces::msg::StringStamped> subscriber_detection;
 
         /**
         * Define and parse node-parameters.
@@ -70,6 +81,9 @@ class DetectFaces : public rclcpp::Node
 
             // - - - Parameter Declarations - - -
             this->declare_parameter("cam_topic", "camera/color/image_raw");
+            this->declare_parameter("extFacedet_topic", "");
+            this->declare_parameter("extFacedet_ArrayName", "DETECTED_GESTURES");
+            this->declare_parameter("extFacedet_name", "face");
             this->declare_parameter("mask_topic", "mask_eval");
             this->declare_parameter("rec_topic", "rec_id");
             this->declare_parameter("emotion_topic", "emotion_id");
@@ -82,20 +96,24 @@ class DetectFaces : public rclcpp::Node
             this->declare_parameter("eng_use_dla", -1);
             this->declare_parameter("eng_fp_16", false);
 
-            json_topic_ = this->declare_parameter("json_topic", "json_out");
-            fps_topic_ = this->declare_parameter("fps_topic", "json_out");
-            m_maxFPS = this->declare_parameter("max_fps", 30.0);
-            cam_topic_ = this->get_parameter("cam_topic").as_string();
-            mask_topic_ = this->get_parameter("mask_topic").as_string();
-            rec_topic_ = this->get_parameter("rec_topic").as_string();
-            emotion_topic_ = this->get_parameter("emotion_topic").as_string();
-            faceId_topic_name_ = this->get_parameter("faceId_topic_name").as_string();
-            face_publish_size_ = this->get_parameter("face_pub_size").as_int();
-            fp_timer_duration_ = chrono::milliseconds(this->get_parameter("fp_duration").as_int());
-            eng_weights_path_ = this->get_parameter("eng_weights_path").as_string();
-            eng_save_path_ = this->get_parameter("eng_save_path").as_string();
-            eng_use_dla_ = this->get_parameter("eng_use_dla").as_int();
-            eng_fp_16_ = this->get_parameter("eng_fp_16").as_bool();
+            json_topic_         = this->declare_parameter("json_topic", "json_out");
+            fps_topic_          = this->declare_parameter("fps_topic", "json_out");
+            m_maxFPS            = this->declare_parameter("max_fps", 30.0);
+
+            cam_topic_              = this->get_parameter("cam_topic").as_string();
+            extFacedet_topic        = this->get_parameter("extFacedet_topic").as_string();
+            m_extFacedet_ArrayName  = this->get_parameter("extFacedet_ArrayName").as_string();
+            m_extFacedet_name       = this->get_parameter("extFacedet_name").as_string();
+            mask_topic_             = this->get_parameter("mask_topic").as_string();
+            rec_topic_              = this->get_parameter("rec_topic").as_string();
+            emotion_topic_          = this->get_parameter("emotion_topic").as_string();
+            faceId_topic_name_      = this->get_parameter("faceId_topic_name").as_string();
+            face_publish_size_      = this->get_parameter("face_pub_size").as_int();
+            fp_timer_duration_      = chrono::milliseconds(this->get_parameter("fp_duration").as_int());
+            eng_weights_path_       = this->get_parameter("eng_weights_path").as_string();
+            eng_save_path_          = this->get_parameter("eng_save_path").as_string();
+            eng_use_dla_            = this->get_parameter("eng_use_dla").as_int();
+            eng_fp_16_              = this->get_parameter("eng_fp_16").as_bool();
         }
 
         /**
@@ -105,8 +123,6 @@ class DetectFaces : public rclcpp::Node
             m_elapsedTime = 0;
             m_timer.Start();
 
-            fd_ = std::make_shared<face_RT::RetinaFaceDetector>(eng_weights_path_, eng_save_path_, eng_use_dla_, eng_fp_16_);
-
             RCLCPP_INFO(this->get_logger(), "Subscribing to topic '%s'", cam_topic_.c_str());
             // sub_ = create_subscription<sensor_msgs::msg::Image>(cam_topic_, qos, callback);
 
@@ -114,6 +130,7 @@ class DetectFaces : public rclcpp::Node
             m_qos_profile = m_qos_profile.keep_last(5);
             m_qos_profile = m_qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
             //m_qos_profile = m_qos_profile.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
+            //m_qos_profile = m_qos_profile.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 	
             rclcpp::QoS m_qos_profile_sysdef = rclcpp::SystemDefaultsQoS();
             m_qos_profile_sysdef = m_qos_profile_sysdef.keep_last(5);
@@ -128,11 +145,25 @@ class DetectFaces : public rclcpp::Node
             cam_options.callback_group = my_callback_cam_group;
             options.callback_group = my_callback_group;
 
+            if(extFacedet_topic.compare("") == 0){
+                fd_ = std::make_shared<face_RT::RetinaFaceDetector>(eng_weights_path_, eng_save_path_, eng_use_dla_, eng_fp_16_, false);
+                cam_sub_ = create_subscription<sensor_msgs::msg::Image>(cam_topic_, m_qos_profile, std::bind(&DetectFaces::cam_callback, this, std::placeholders::_1), cam_options);
+            } else {
+                fd_ = std::make_shared<face_RT::RetinaFaceDetector>(eng_weights_path_, eng_save_path_, eng_use_dla_, eng_fp_16_, true);
+              
+                subscriber_image.subscribe(this, cam_topic_, m_qos_profile.get_rmw_qos_profile());
+                subscriber_detection.subscribe(this, extFacedet_topic, m_qos_profile.get_rmw_qos_profile());
 
-            //my_subscription = create_subscription<Int32>("/topic", rclcpp::SensorDataQoS(), callback, options);
+                std::cout << "subscribing to " << cam_topic_ << " and " << extFacedet_topic << std::endl;
 
-            cam_sub_ = create_subscription<sensor_msgs::msg::Image>(cam_topic_, m_qos_profile, std::bind(&DetectFaces::cam_callback, this, std::placeholders::_1), cam_options);
+                FrameDetSyncPolicy frameDet_sync_policy(4);
+                frameDet_sync_policy.setAgePenalty(2.);
+                frameDet_sync_policy.setMaxIntervalDuration(rclcpp::Duration(0, 19e6));
 
+                frameDet_sync = new FrameDetSync(static_cast<const FrameDetSyncPolicy &>(frameDet_sync_policy), subscriber_image, subscriber_detection);
+                frameDet_sync->registerCallback(&DetectFaces::approximate_sync_callback, this);
+            }
+           
             // - - - init publisher - - -
             json_publisher_ = create_publisher<std_msgs::msg::String>(json_topic_, m_qos_profile_sysdef);
             m_fps_publisher = create_publisher<std_msgs::msg::String>(fps_topic_, m_qos_profile_sysdef);
@@ -140,16 +171,11 @@ class DetectFaces : public rclcpp::Node
 
             update_id_face_timer_ = this->create_wall_timer(fp_timer_duration_, std::bind(&DetectFaces::pub_ids_faces_callback, this));
 
-
-            //ubscription_ = this->create_subscription<rtface_pkg::msg::ListIdImage>(topic_sub, m_qos_profile_sysdef, publish_msg);
             // - - - subscriber for inference nodes - - -
-            std::cerr << "test: " << rec_topic_ << std::endl;
-            //rec_sub_ = this->create_subscription<rtface_pkg::msg::ListIdName>(rec_topic_, m_qos_profile_sysdef, std::bind(&DetectFaces::rec_callbaasdagfck, this, std::placeholders::_1));
-        
-            rec_sub_   = this->create_subscription<rtface_pkg::msg::ListIdName>(rec_topic_, m_qos_profile, std::bind(&DetectFaces::rec_callback, this, std::placeholders::_1), options);
-            std::cerr << "test2 " << rec_topic_ << std::endl;
-            mask_sub_ = this->create_subscription<rtface_pkg::msg::ListIdMask>(mask_topic_, m_qos_profile, std::bind(&DetectFaces::mask_callback, this, std::placeholders::_1), options);
-            emotion_sub_ = this->create_subscription<rtface_pkg::msg::ListIdEmotion>(emotion_topic_, m_qos_profile, std::bind(&DetectFaces::emotion_callback, this, std::placeholders::_1), options);
+
+            rec_sub_        = this->create_subscription<rtface_pkg::msg::ListIdName>(rec_topic_, m_qos_profile, std::bind(&DetectFaces::rec_callback, this, std::placeholders::_1), options);
+            mask_sub_       = this->create_subscription<rtface_pkg::msg::ListIdMask>(mask_topic_, m_qos_profile, std::bind(&DetectFaces::mask_callback, this, std::placeholders::_1), options);
+            emotion_sub_    = this->create_subscription<rtface_pkg::msg::ListIdEmotion>(emotion_topic_, m_qos_profile, std::bind(&DetectFaces::emotion_callback, this, std::placeholders::_1), options);
         }
 
         void cam_callback (const sensor_msgs::msg::Image::SharedPtr msg) {
@@ -157,6 +183,12 @@ class DetectFaces : public rclcpp::Node
             process_image(msg, this->get_logger());
         };
 
+        void approximate_sync_callback(const sensor_msgs::msg::Image::ConstSharedPtr image_msg, const sm_interfaces::msg::StringStamped::ConstSharedPtr detection_msg){
+            //std::cout<<"Received APPROXIMATE msg: "<< image_msg->encoding << " and msg " << detection_string->data <<std::endl;
+            //RCLCPP_INFO(this->get_logger(), "TEST");
+            process_imageAndDetection(image_msg, detection_msg, this->get_logger());
+
+        }
 
         void pub_ids_faces_callback () {
             auto tracked_faces = fd_->getTrackedFaces(face_publish_size_);
@@ -259,9 +291,8 @@ class DetectFaces : public rclcpp::Node
         }
 
         /**
-        * Process the camera - image.
+        * Process the image within the callback.
         * @param msg Ponter of image-message.
-        * @param show_image
         * @param logger
         */
         void process_image(const sensor_msgs::msg::Image::SharedPtr msg, rclcpp::Logger logger) {
@@ -276,6 +307,51 @@ class DetectFaces : public rclcpp::Node
 
             //publish json
             std::string tracks_json = fd_->get_all_tracks_as_json();
+
+            if(m_last_json_msg.compare(tracks_json) != 0){
+      
+                std_msgs::msg::String json_msg;
+                json_msg.set__data(tracks_json);
+                try {
+                    json_publisher_->publish(json_msg);
+                } catch (...) {
+                    DEBUG_MSG("Publish JSON failed");
+                }
+                m_last_json_msg = tracks_json;
+            }
+            m_frameCnt++;
+            CheckFPS(&m_frameCnt);
+
+        }
+
+        /**
+        * Process the synced image and detection within the callback.
+        * @param msg Ponter of image-message.
+        * @param det_msg Ponter of detection-message.
+        * @param logger
+        */
+        void process_imageAndDetection(const sensor_msgs::msg::Image::ConstSharedPtr image_msg, const sm_interfaces::msg::StringStamped::ConstSharedPtr det_msg , rclcpp::Logger logger) {
+            // Convert to an OpenCV matrix by assigning the data.
+            cv::Mat frame(image_msg->height, image_msg->width, encoding2mat_type(image_msg->encoding), const_cast<unsigned char *>(image_msg->data.data()), image_msg->step);
+
+            if (image_msg->encoding == "rgb8") {
+                cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+            }  
+
+            auto det_json = nlohmann::json::parse(det_msg->data.data());
+
+            nlohmann::json filtered;
+            std::copy_if(det_json[m_extFacedet_ArrayName].begin(), det_json[m_extFacedet_ArrayName].end(), std::back_inserter(filtered), [this](const nlohmann::json& item) {
+                return item.contains("name") && m_extFacedet_name.compare(item["name"]) == 0;
+            });
+            //std::cout << filtered << std::endl;
+
+            //fd_->detectFrame(frame);
+            fd_->updateImageAndDetections(frame, filtered);
+
+            //publish json
+            std::string tracks_json = fd_->get_all_tracks_as_json();
+
             if(m_last_json_msg.compare(tracks_json) != 0){
       
                 std_msgs::msg::String json_msg;
@@ -353,9 +429,9 @@ class DetectFaces : public rclcpp::Node
         * @param msg List of ids and names.
         */
         void rec_callback(const rtface_pkg::msg::ListIdName::SharedPtr msg) {
-            map<int, string> id_name_map{};
+            std::map<int, std::pair<string, float>> id_name_map{};
              for (auto &id_name_prob: msg->list_id_name) {
-              id_name_map.insert({id_name_prob.id, id_name_prob.name});
+              id_name_map[id_name_prob.id] = {id_name_prob.name, id_name_prob.similarity};
              }
             fd_->assignRecognitions(id_name_map);
         }
@@ -365,6 +441,8 @@ class DetectFaces : public rclcpp::Node
         rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr cam_sub_;
 
         std::string cam_topic_;
+        std::string extFacedet_topic, m_extFacedet_name, m_extFacedet_ArrayName;
+
         std::shared_ptr<face_RT::RetinaFaceDetector> fd_;
 
         // - - - publish faces with ids for other nodes - - -

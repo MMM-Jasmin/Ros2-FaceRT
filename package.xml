@@ -16,16 +16,15 @@
   <build_depend>vision_opencv</build_depend>
   <build_depend>sensor_msgs</build_depend>
 
-
-
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 
+  <depend>message_filters</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>camera_interfaces</depend>
+  <depend>sm_interfaces</depend>
   
 <!--  <depend>camera_interfaces</depend>-->
 

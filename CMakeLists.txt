@@ -33,7 +33,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(OpenCV REQUIRED)
-
+find_package(message_filters REQUIRED)
+find_package(sm_interfaces REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 set(msg_files
       "msg/IdImage.msg"
@@ -58,8 +60,7 @@ option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 find_package(CUDA REQUIRED)
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-  find_package(camera_interfaces REQUIRED)
-message("embed_platform on")
+  message("embed_platform on")
   include_directories(/usr/local/cuda/targets/aarch64-linux/include)
   link_directories(/usr/local/cuda/targets/aarch64-linux/lib)
 else()
@@ -226,9 +227,10 @@ ament_target_dependencies(
       detect_node
       "rclcpp"
       "std_msgs"
+      "message_filters"
+      "sm_interfaces"
       "sensor_msgs"
       "cv_bridge"
-#      "camera_interfaces"
 )
 ament_target_dependencies(
       display_node
