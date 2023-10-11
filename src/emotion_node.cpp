@@ -25,29 +25,20 @@
 namespace bpo = boost::program_options;
 
 
-class EmotionSubPub : public rclcpp::Node
-{
+class EmotionSubPub : public rclcpp::Node {
 public:
-  EmotionSubPub()
-      : Node("emotion_node")
-  {
+  EmotionSubPub() : Node("emotion_node")  {
     parse_parameters();
-    IdEmotion_publisher_ = this->create_publisher<rtface_pkg::msg::ListIdEmotion>(
-        topic_pub, 1);
+    IdEmotion_publisher_ = this->create_publisher<rtface_pkg::msg::ListIdEmotion>(topic_pub, 1);
     RCLCPP_INFO(this->get_logger(), std::string("Publishing to " + topic_pub).c_str());
 
-    mp_ = std::make_shared<face_RT::EmotionPredictionRT>(eng_save,
-                                                         eng_onnx_path,
-                                                         eng_save_path,
-                                                         eng_use_dla_,
-                                                         eng_fp_16_);
+    mp_ = std::make_shared<face_RT::EmotionPredictionRT>(eng_save, eng_onnx_path, eng_save_path, eng_use_dla_, eng_fp_16_);
     RCLCPP_INFO(this->get_logger(), "Emotion engine is running.");
 
     DEBUG_MSG("Rec init success!");
 
     // - - - Callback function - - -
-    auto pub_id_emo_msg = [this](
-        const rtface_pkg::msg::ListIdImage::UniquePtr msg) -> void {
+    auto pub_id_emo_msg = [this](const rtface_pkg::msg::ListIdImage::UniquePtr msg) -> void {
       RCLCPP_INFO(this->get_logger(), "Got new faces");
       faceMap.clear();
       // - - - fill faceMap - - -
@@ -59,23 +50,21 @@ public:
       // - - - recognize emotion - - -
       listIdEmotion.list_id_emotion.clear();
       for (auto &pair: faceMap) {
-        int res{4};
+        int res{-1};
         mp_->infer(pair.second, res);
         id_emotion.set__id(pair.first);
         id_emotion.set__emotion(res);
         listIdEmotion.list_id_emotion.push_back(id_emotion);
-        DEBUG_MSG(
-            "ID_name: " << std::to_string(id_emotion.id) << ", " << id_emotion.emotion);
+        DEBUG_MSG( "ID_name: " << std::to_string(id_emotion.id) << ", " << id_emotion.emotion);
       }
-      DEBUG_MSG("pblish_msg init success");
+      //DEBUG_MSG("pblish_msg init success");
 
       // - - - send emotions back - - -
       IdEmotion_publisher_->publish(listIdEmotion);
     };
 
     RCLCPP_INFO(this->get_logger(), "trying to sub");
-    subscription_ = this->create_subscription<rtface_pkg::msg::ListIdImage>(
-        topic_sub, 1, pub_id_emo_msg);
+    subscription_ = this->create_subscription<rtface_pkg::msg::ListIdImage>(topic_sub, 1, pub_id_emo_msg);
     DEBUG_MSG("sub success");
     RCLCPP_INFO(this->get_logger(), "Sub success");
 
