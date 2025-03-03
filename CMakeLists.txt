@@ -98,22 +98,22 @@ set(PROJECT_BINARY ${PROJECT_NAME})
 
 find_library(TENSORRT_LIBRARY_INFER nvinfer REQUIRED
         HINTS ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu)
+        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu lib/aarch64-linux-gnu/nvidia)
 find_path(TENSORRT_INCLUDE_DIR NvInferPlugin.h
         HINTS  ${CUDA_TOOLKIT_ROOT_DIR}
         PATH_SUFFIXES include)
 find_library(TENSORRT_LIBRARY_INFER_PLUGIN nvinfer_plugin
         HINTS   ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu)
-find_library(TENSORRT_LIBRARY_PARSER nvparsers
-      HINTS ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-      PATH_SUFFIXES lib lib64 lib/x64)
+        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu lib/aarch64-linux-gnu/nvidia)
+find_library(TENSORRT_LIBRARY_PARSER nvparser
+      HINTS ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
+      PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu/nvidia)
 find_library(TENSORRT_LIB_ONNXPARSER nvonnxparser
         HINTS  ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-        PATH_SUFFIXES lib lib64 lib/x64)
+        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu/nvidia)
 find_library(TENSORRT_LIBRARY_INFER_PLUGIN onnxparser
         HINTS ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu)
+        PATH_SUFFIXES lib lib64 lib/x64 lib/aarch64-linux-gnu lib/aarch64-linux-gnu/nvidia)
 
 #find_library(DECODE_PLUGIN decodeplugin
 #      HINTS "/opt/dev/dependencies/RTface_lib/install/face_RT/lib/"
